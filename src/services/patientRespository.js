@@ -4,10 +4,13 @@ const {Patient} = require('../models/patient.model');
 const {Medcard} = require('../models/medcard.model');
 const {Pregnancy} = require('../models/pregnancy.model');
 const {Parameters} = require('../models/parameters.model');
+const bcrypt = require('bcryptjs');
 
 class PatientRepository{
     async getPatient(id){
-        return await Patient.findById(id);
+        const patient =  await Patient.findById(id);
+        patient.doctor = await Doctor.findById(patient.doctor._id);
+        return patient;
     }
 
     async getAllPatients(){
@@ -15,13 +18,13 @@ class PatientRepository{
     }
 
     async createPatient(body){
-        console.log(body);
         const patient = new Patient({
             doctor: await Doctor.findById(body.doctorId),
             firstName: body.firstName,
             lastName: body.lastName,
             dob: body.dob,
-            phoneNumber: body.phoneNumber
+            phoneNumber: body.phoneNumber,
+            password: await bcrypt.hash(body.password, 10)
         });
 
         patient.save();
@@ -42,7 +45,8 @@ class PatientRepository{
             date: body.date,
             type: body.type,
             price: body.price,
-            isPayed: body.isPayed
+            isPayed: body.isPayed,
+            duration: body.duration
         });
 
         await appointment.save();
@@ -53,12 +57,23 @@ class PatientRepository{
         await Appointment.deleteOne({_id: appointmentId});
     }
 
-    async rateDoctor(doctorId, ratingScore){
+    async rateDoctor(doctorId, ratingScore, patientId){
         const doctor = await Doctor.findById(doctorId);
+        const patient = await Patient.findById(patientId);
+        if(isNaN(doctor.numberOfRated)){
+            doctor.numberOfRated = 0;
+        }
+        if(isNaN(doctor.rating)){
+            doctor.rating = 0;
+        }
+        await doctor.save();
         const newRate = ((doctor.rating * doctor.numberOfRated) + ratingScore) / (doctor.numberOfRated + 1);
         await doctor.update({numberOfRated: doctor.numberOfRated + 1});
         await doctor.update({rating: newRate});
         await doctor.save();
+
+        await patient.update({doctor: doctor, rated: true});
+        await patient.save();
     }
 
     async sendParams(patientId, body){
@@ -77,8 +92,13 @@ class PatientRepository{
         return params;
     }
 
+    async findByLastName(lastName, doctorId){
+        const patient = await Patient.find({"doctor._id": doctorId, lastName: lastName});
+        
+        return patient;
+    }
+
     async getRejectedParams(patientId){
-        console.log(patientId);
         const params = await Parameters.find({
             "patient._id": patientId,
             approved: false

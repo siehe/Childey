@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const config = require('../config/default.json');
+const jwt = require('jsonwebtoken');
 
 const DoctorSchema = new mongoose.Schema({
     firstName: {
@@ -52,8 +54,17 @@ const DoctorSchema = new mongoose.Schema({
     numberOfRated:{
         type: Number,
         required: false
+    },
+    password: {
+        type: String,
+        required: false
     }
 });
+
+DoctorSchema.methods.generateAuthToken = function(){
+    const token = jwt.sign({_id: this._id}, config.myprivatekey);
+    return token;
+}
 
 const Doctor = mongoose.model('Doctor', DoctorSchema);
 

@@ -1,8 +1,33 @@
 const express = require('express');
 const router = express.Router();
+const authDoctor = require('../middlware/authDoctor');
+const bcrypt = require('bcryptjs');
 const { DoctorRepository } = require('../services/doctorRepository');
+const { PatientRepository } = require('../services/patientRespository');
+
+const { Doctor } = require('../models/doctor.model');
 
 const doctorRepository = new DoctorRepository();
+const patientRepository = new PatientRepository();
+
+router.post('/doctor/login', async (req, res) => {
+    const doctor = await Doctor.findOne({phoneNumber: req.body.phoneNumber});
+
+    if(!doctor){
+        return res.status(404).send('No users were found with the given credentials');
+    }
+
+    if(await bcrypt.compare(req.body.password, doctor.password)){
+        const token = doctor.generateAuthToken();
+        res.header('x-auth-token', token).status(200).send({
+            doctorId: doctor._id,
+            token: token
+        });
+    }
+    else{
+        res.status(401).send('Wrong credentials');
+    }
+});
 
 router.get('/doctor', async (req, res) => {
     const doctors = await doctorRepository.getAllDoctors();
@@ -15,7 +40,10 @@ router.get('/doctor', async (req, res) => {
     }
 });
 
-router.get('/doctor/:id', async (req, res) => {
+router.get('/doctor/:id', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const doctor = await doctorRepository.getDoctor(req.params.id);
 
     if(doctor){
@@ -26,7 +54,10 @@ router.get('/doctor/:id', async (req, res) => {
     }
 });
 
-router.get('/doctor/:id/appointments', async (req, res) => {
+router.get('/doctor/:id/appointments', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const appointments = await doctorRepository.getDoctorsAppointments(req.params.id);
 
     if(appointments){
@@ -37,7 +68,10 @@ router.get('/doctor/:id/appointments', async (req, res) => {
     }
 });
 
-router.get('/doctor/:id/patients', async (req, res) => {
+router.get('/doctor/:id/patients', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const patients = await doctorRepository.getDoctorsPatients(req.params.id);
 
     if(patients){
@@ -51,10 +85,20 @@ router.get('/doctor/:id/patients', async (req, res) => {
 router.post('/doctor', async (req, res) => {
     const doctor = await doctorRepository.createDoctor(req.body);
 
-    res.status(201).send(doctor);
+    const token = doctor.generateAuthToken();
+
+    if(doctor){
+        res.header('x-auth-token', token).status(201).send(doctor);
+    }
+    else{
+        res.sendStatus(400);
+    }
 });
 
-router.post('/doctor/:id/appointment', async (req, res) => {
+router.post('/doctor/:id/appointment', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const appointment = await doctorRepository.setAppointment(req.params.id, req.body);
 
     if(appointment){
@@ -65,7 +109,10 @@ router.post('/doctor/:id/appointment', async (req, res) => {
     }
 });
 
-router.post('/doctor/:id/pregnancy', async (req, res) => {
+router.post('/doctor/:id/pregnancy', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const pregnancy = await doctorRepository.createPregnancy(req.body);
 
     if(pregnancy){
@@ -76,7 +123,10 @@ router.post('/doctor/:id/pregnancy', async (req, res) => {
     }
 });
 
-router.post('/doctor/:id/medcard', async (req, res) => {
+router.post('/doctor/:id/medcard', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
     const medcard = await doctorRepository.createMedcard(req.params.id, req.body);
 
     if(medcard){
@@ -108,11 +158,24 @@ router.delete('/appointment/:appointmentId', async (req, res) => {
     res.sendStatus(200);
 });
 
-router.put('/doctor/:id/params/:paramsId', async (req, res) => {
-    await doctorRepository.declineParams(req.params.paramsId);
-    res.sendStatus(200);
+router.get('/doctor/:id/patient/:lastName', authDoctor, async (req, res) => {
+    if(req.params.id !== req.doctor._id){
+        res.status(403).send('Access denied');
+    }
+    const patients = await patientRepository.findByLastName(req.params.lastName, req.params.id);
+
+    res.status(200).send(patients);
 });
 
-module.exports = router; //5ed39cd4f0c476093c8bf114
+router.put('/doctor/aaaa', async (req, res) => {
+    const doctor = await doctorRepository.getDoctor(req.body.doctorId);
+    const patient = await patientRepository.getPatient(req.body.patientId);
 
-//http://localhost:3000/doctor/5ec852892936992a341fbdd6/params/5ed39cd4f0c476093c8bf114
+    await patient.update({doctor: doctor});
+
+    patient.save();
+
+    res.send(patient);
+});
+
+module.exports = router;

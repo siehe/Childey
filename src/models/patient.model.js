@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const config = require('../config/default.json');
+const jwt = require('jsonwebtoken');
 const {DoctorSchema} = require('../models/doctor.model');
 
 const PatientSchema = new mongoose.Schema({
@@ -37,8 +39,25 @@ const PatientSchema = new mongoose.Schema({
     lastSentBellySize: {
         type: Number,
         required: false
+    },
+    password:{
+        type: String,
+        required: false
+    },
+    rated:{
+        type: Boolean,
+        required: false
+    },
+    email:{
+        type: String,
+        required: false
     }
 });
+
+PatientSchema.methods.generateAuthToken = function (){
+    const token = jwt.sign({_id: this._id}, config.myprivatekey);
+    return token;
+}
 
 const Patient = mongoose.model('Patient', PatientSchema);
 

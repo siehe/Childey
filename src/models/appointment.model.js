@@ -5,15 +5,15 @@ const {PatientSchema} = require('../models/patient.model');
 const  AppointmentSchema = new mongoose.Schema({
     doctor: {
         type: DoctorSchema,
-        required: true
+        required: false
     },
     patient: {
         type: PatientSchema,
-        required: true
+        required: false
     },
     date: {
         type: Date,
-        required: true
+        required: false
     },
     type: {
         type: String,
@@ -25,7 +25,11 @@ const  AppointmentSchema = new mongoose.Schema({
     },
     isPayed: {
         type: Boolean,
-        required: true
+        required: false
+    },
+    duration: {
+        type: Number,
+        required: false
     }
 });
 

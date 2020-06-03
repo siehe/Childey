@@ -30,6 +30,22 @@ const  ParametersSchema = new mongoose.Schema({
     approved: {
         type: Boolean,
         required: false
+    },
+    password:{
+        type: String,
+        required: false
+    },
+    lastUpdated:{
+        type: Date,
+        required: false
+    },
+    comment:{
+        type: String,
+        required: false
+    },
+    seenByPatient:{
+        type: Boolean,
+        required: false
     }
 });
 

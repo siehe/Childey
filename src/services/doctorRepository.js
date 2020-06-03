@@ -4,6 +4,7 @@ const {Patient} = require('../models/patient.model');
 const {Medcard} = require('../models/medcard.model');
 const {Pregnancy} = require('../models/pregnancy.model');
 const {Parameters} = require('../models/parameters.model');
+const bcrypt = require('bcryptjs');
 
 class DoctorRepository {
     async getDoctor(id){  //+
@@ -33,12 +34,11 @@ class DoctorRepository {
             date: body.date,
             type: body.type,
             price: body.price,
-            isPayed: body.isPayed
+            isPayed: body.isPayed,
+            duration: body.duration
         });
 
         await appointment.save();
-
-        console.log(appointment);
 
         return appointment;
     }
@@ -59,7 +59,8 @@ class DoctorRepository {
             workingDays: createBody.workingDays,
             workingHours: createBody.workingHours,
             generalPatientNumber: createBody.generalPatientNumber,
-            currentPatientNumber: createBody.currentPatientNumber
+            currentPatientNumber: createBody.currentPatientNumber,
+            password: await bcrypt.hash(createBody.password, 10)
         });
 
         await doctor.save();
@@ -138,11 +139,10 @@ class DoctorRepository {
         });
     }
 
-    async declineParams(paramsId){
+    async updateParams(paramsId, body){
         const params = await Parameters.findById(paramsId);
-        await params.update({checked: true, approved: false});
+        await params.update({checked: true, approved: body.answer, comment: body.comment, lastUpdated: Date.now()});
 
-        console.log(params);
         await params.save();
     }
 }
